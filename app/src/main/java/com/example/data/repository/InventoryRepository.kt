@@ -235,6 +235,68 @@ class InventoryRepository(
         )
     }
 
+    /**
+     * Records a stock change in the database history, recording adjustment type ('restock', 'sale', etc.),
+     * timestamp, and quantity changes.
+     */
+    suspend fun recordStockChange(
+        productId: Long,
+        quantityDelta: Int,
+        adjustmentType: String,
+        reason: String = "",
+        unitPrice: Double = 0.0,
+        timestamp: Long = System.currentTimeMillis()
+    ): Boolean {
+        val type = MovementType.fromString(adjustmentType)
+        return adjustStock(
+            productId = productId,
+            quantityDelta = quantityDelta,
+            type = type,
+            reason = reason,
+            unitPrice = unitPrice,
+            timestamp = timestamp
+        )
+    }
+
+    /**
+     * Records a stock change directly using MovementType.
+     */
+    suspend fun recordStockChange(
+        productId: Long,
+        quantityDelta: Int,
+        type: MovementType,
+        reason: String = "",
+        unitPrice: Double = 0.0,
+        timestamp: Long = System.currentTimeMillis()
+    ): Boolean {
+        return adjustStock(
+            productId = productId,
+            quantityDelta = quantityDelta,
+            type = type,
+            reason = reason,
+            unitPrice = unitPrice,
+            timestamp = timestamp
+        )
+    }
+
+    /**
+     * Returns history of stock changes for a specific product.
+     */
+    fun getStockHistoryForProduct(productId: Long): Flow<List<StockMovement>> =
+        movementDao.getMovementsForProduct(productId)
+
+    /**
+     * Returns stock movements filtered by adjustment type (e.g. RESTOCK, SALE).
+     */
+    fun getStockHistoryByType(type: MovementType): Flow<List<StockMovement>> =
+        movementDao.getMovementsByType(type)
+
+    /**
+     * Returns stock movements within a timestamp range.
+     */
+    fun getStockHistoryBetween(startTime: Long, endTime: Long): Flow<List<StockMovement>> =
+        movementDao.getMovementsBetweenTimestamps(startTime, endTime)
+
     suspend fun resetToSampleData() {
         productDao.clearAllProducts()
         movementDao.clearAllMovements()

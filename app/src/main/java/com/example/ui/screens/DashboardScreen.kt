@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocalShipping
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -43,9 +45,16 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,6 +86,8 @@ fun DashboardScreen(
     stats: InventoryStats,
     stockAlerts: List<StockAlert>,
     products: List<Product> = emptyList(),
+    initialSearchQuery: String = "",
+    onSearchQueryChange: ((String) -> Unit)? = null,
     onOpenScanner: () -> Unit,
     onOpenAddProduct: () -> Unit,
     onOpenPos: () -> Unit,
@@ -86,6 +97,27 @@ fun DashboardScreen(
     onResetDemoData: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var searchQuery by remember(initialSearchQuery) { mutableStateOf(initialSearchQuery) }
+
+    val displayProducts = if (products.isNotEmpty()) {
+        products
+    } else {
+        stockAlerts.map { it.product }
+    }
+
+    val filteredProducts = remember(displayProducts, searchQuery) {
+        if (searchQuery.isBlank()) {
+            displayProducts
+        } else {
+            val query = searchQuery.trim().lowercase()
+            displayProducts.filter { product ->
+                product.name.lowercase().contains(query) ||
+                product.sku.lowercase().contains(query) ||
+                product.barcode.lowercase().contains(query)
+            }
+        }
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -128,27 +160,176 @@ fun DashboardScreen(
             }
         }
 
-        // Real-Time Stock Alerts Banner
+        // Real-Time Inventory Search Bar (Prominently placed for immediate filtering)
         item {
-            val totalAlerts = stockAlerts.size
-            val outOfStockCount = stockAlerts.count { it.severity == AlertSeverity.CRITICAL_OUT_OF_STOCK }
-            val lowStockCount = stockAlerts.count { it.severity == AlertSeverity.WARNING_LOW_STOCK }
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = {
+                    searchQuery = it
+                    onSearchQueryChange?.invoke(it)
+                },
+                placeholder = {
+                    Text(
+                        text = "Search inventory by name, SKU, or barcode...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search inventory",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                searchQuery = ""
+                                onSearchQueryChange?.invoke("")
+                            },
+                            modifier = Modifier.testTag("dashboard_search_clear_button")
+                        ) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Clear search query",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("dashboard_search_bar")
+            )
+        }
 
-            if (totalAlerts > 0) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (outOfStockCount > 0) AlertOutOfStockBg else AlertLowStockBg
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(
-                            1.dp,
-                            if (outOfStockCount > 0) AlertOutOfStock.copy(alpha = 0.4f) else AlertLowStock.copy(alpha = 0.4f),
-                            RoundedCornerShape(16.dp)
-                        )
-                        .testTag("realtime_stock_alerts_banner")
+        if (searchQuery.isNotBlank()) {
+            // Real-Time Search Results Section
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Column {
+                        Text(
+                            text = "Search Results (${filteredProducts.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.testTag("dashboard_stock_items_header")
+                        )
+                        Text(
+                            text = "Filtered by \"$searchQuery\" (${filteredProducts.size} of ${displayProducts.size} items)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("dashboard_stock_items_count")
+                        )
+                    }
+
+                    Text(
+                        text = "Clear Filter",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clickable {
+                                searchQuery = ""
+                                onSearchQueryChange?.invoke("")
+                            }
+                            .padding(4.dp)
+                            .testTag("dashboard_clear_filter_header")
+                    )
+                }
+            }
+
+            if (filteredProducts.isEmpty()) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("dashboard_search_empty_state")
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No items match \"$searchQuery\"",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Try searching with a different product name, SKU, or barcode.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            TextButton(
+                                onClick = {
+                                    searchQuery = ""
+                                    onSearchQueryChange?.invoke("")
+                                },
+                                modifier = Modifier.testTag("dashboard_clear_search_btn")
+                            ) {
+                                Text("Clear Search")
+                            }
+                        }
+                    }
+                }
+            } else {
+                items(filteredProducts, key = { "search_item_${it.id}" }) { product ->
+                    DashboardStockItemCard(
+                        product = product,
+                        onSelect = { onSelectProduct(product) }
+                    )
+                }
+            }
+        } else {
+            // Real-Time Stock Alerts Banner
+            item {
+                val totalAlerts = stockAlerts.size
+                val outOfStockCount = stockAlerts.count { it.severity == AlertSeverity.CRITICAL_OUT_OF_STOCK }
+                val lowStockCount = stockAlerts.count { it.severity == AlertSeverity.WARNING_LOW_STOCK }
+
+                if (totalAlerts > 0) {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (outOfStockCount > 0) AlertOutOfStockBg else AlertLowStockBg
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                1.dp,
+                                if (outOfStockCount > 0) AlertOutOfStock.copy(alpha = 0.4f) else AlertLowStock.copy(alpha = 0.4f),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .testTag("realtime_stock_alerts_banner")
+                    ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -413,15 +594,9 @@ fun DashboardScreen(
         }
 
         // Main Inventory Stock Items List
-        val displayProducts = if (products.isNotEmpty()) {
-            products
-        } else {
-            stockAlerts.map { it.product }
-        }
-
         if (displayProducts.isNotEmpty()) {
             item {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -437,7 +612,8 @@ fun DashboardScreen(
                         Text(
                             text = "${displayProducts.size} products tracked in live inventory",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("dashboard_stock_items_count")
                         )
                     }
 
@@ -457,6 +633,7 @@ fun DashboardScreen(
                 )
             }
         }
+    }
 
         item {
             Spacer(modifier = Modifier.height(80.dp))

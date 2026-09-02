@@ -8,9 +8,5 @@ class Converters {
     fun fromMovementType(type: MovementType): String = type.name
 
     @TypeConverter
-    fun toMovementType(value: String): MovementType = try {
-        MovementType.valueOf(value)
-    } catch (e: Exception) {
-        MovementType.ADJUSTMENT
-    }
+    fun toMovementType(value: String): MovementType = MovementType.fromString(value)
 }

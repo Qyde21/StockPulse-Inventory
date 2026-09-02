@@ -195,7 +195,7 @@ private fun MovementLogCard(
     modifier: Modifier = Modifier
 ) {
     val (icon, iconBg, iconTint) = when (movement.type) {
-        MovementType.STOCK_IN -> Triple(Icons.Default.LocalShipping, AlertInStockBg, AlertInStock)
+        MovementType.STOCK_IN, MovementType.RESTOCK -> Triple(Icons.Default.LocalShipping, AlertInStockBg, AlertInStock)
         MovementType.SALE -> Triple(Icons.Default.PointOfSale, Color(0xFFDBEAFE), PrimaryBlue)
         MovementType.ADJUSTMENT -> Triple(Icons.Default.SyncAlt, AlertLowStockBg, AlertLowStock)
         MovementType.RETURN -> Triple(Icons.Default.Restore, Color(0xFFCCFBF1), AccentTeal)
