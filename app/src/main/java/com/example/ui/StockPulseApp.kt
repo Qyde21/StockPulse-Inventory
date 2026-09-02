@@ -187,6 +187,7 @@ fun StockPulseApp(
                     DashboardScreen(
                         stats = stats,
                         stockAlerts = stockAlerts,
+                        products = allProducts,
                         onOpenScanner = { viewModel.openScanner() },
                         onOpenAddProduct = {
                             productForAddEdit = null

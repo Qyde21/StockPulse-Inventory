@@ -1,20 +1,29 @@
 package com.example.data.repository
 
+import com.example.data.db.InventoryItemDao
 import com.example.data.db.ProductDao
 import com.example.data.db.StockMovementDao
 import com.example.data.model.AlertSeverity
+import com.example.data.model.InventoryItem
 import com.example.data.model.MovementType
 import com.example.data.model.Product
 import com.example.data.model.StockAlert
 import com.example.data.model.StockMovement
+import com.example.data.model.toInventoryItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class InventoryRepository(
     private val productDao: ProductDao,
-    private val movementDao: StockMovementDao
+    private val movementDao: StockMovementDao,
+    private val inventoryItemDao: InventoryItemDao? = null
 ) {
     val allProducts: Flow<List<Product>> = productDao.getAllProducts()
+
+    /**
+     * Reactive stream of inventory items for observing persistence across sessions.
+     */
+    val inventoryItems: Flow<List<Product>> = allProducts
 
     val stockAlerts: Flow<List<StockAlert>> = productDao.getLowStockAndOutOfStockProducts().map { products ->
         products.map { product ->
@@ -56,6 +65,7 @@ class InventoryRepository(
 
     suspend fun insertProduct(product: Product): Long {
         val id = productDao.insertProduct(product)
+        inventoryItemDao?.insertItem(product.toInventoryItem().copy(id = id))
         if (product.currentStock > 0) {
             movementDao.insertMovement(
                 StockMovement(
@@ -78,6 +88,7 @@ class InventoryRepository(
     suspend fun updateProduct(product: Product) {
         val existing = productDao.getProductByIdSync(product.id)
         productDao.updateProduct(product)
+        inventoryItemDao?.updateItem(product.toInventoryItem())
         if (existing != null && existing.currentStock != product.currentStock) {
             val delta = product.currentStock - existing.currentStock
             movementDao.insertMovement(
@@ -163,13 +174,74 @@ class InventoryRepository(
 
     suspend fun deleteProduct(productId: Long) {
         productDao.deleteProductById(productId)
+        inventoryItemDao?.deleteItemById(productId)
+    }
+
+    suspend fun insert(product: Product): Long = insertProduct(product)
+
+    suspend fun update(product: Product) = updateProduct(product)
+
+    suspend fun delete(product: Product) = deleteProduct(product.id)
+
+    suspend fun deleteById(id: Long) = deleteProduct(id)
+
+    suspend fun getItemById(id: Long): Product? = getProductByIdSync(id)
+
+    suspend fun getItemByBarcode(barcode: String): Product? = findProductByBarcodeSync(barcode)
+
+    /**
+     * Inserts an inventory item with name, quantity, and barcode,
+     * persisting to Room database.
+     */
+    suspend fun insertItem(name: String, quantity: Int, barcode: String): Long {
+        val product = Product(
+            name = name,
+            currentStock = quantity,
+            barcode = barcode
+        )
+        return insertProduct(product)
+    }
+
+    /**
+     * Saves or updates an inventory item (name, quantity, barcode).
+     */
+    suspend fun saveInventoryItem(name: String, quantity: Int, barcode: String): Long {
+        val existing = if (barcode.isNotBlank()) findProductByBarcodeSync(barcode) else null
+        return if (existing != null) {
+            val updated = existing.copy(
+                name = name,
+                currentStock = quantity,
+                barcode = barcode,
+                lastUpdated = System.currentTimeMillis()
+            )
+            updateProduct(updated)
+            existing.id
+        } else {
+            insertItem(name, quantity, barcode)
+        }
+    }
+
+    /**
+     * Updates inventory quantity for an item by ID.
+     */
+    suspend fun updateInventoryItemQuantity(id: Long, newQuantity: Int) {
+        val current = productDao.getProductByIdSync(id) ?: return
+        val delta = newQuantity - current.currentStock
+        adjustStock(
+            productId = id,
+            quantityDelta = delta,
+            type = MovementType.ADJUSTMENT,
+            reason = "Inventory quantity adjustment"
+        )
     }
 
     suspend fun resetToSampleData() {
         productDao.clearAllProducts()
         movementDao.clearAllMovements()
+        inventoryItemDao?.clearAll()
         com.example.data.db.InventoryDatabase.INITIAL_PRODUCTS.forEach { product ->
             val id = productDao.insertProduct(product)
+            inventoryItemDao?.insertItem(product.toInventoryItem().copy(id = id))
             movementDao.insertMovement(
                 StockMovement(
                     productId = id,

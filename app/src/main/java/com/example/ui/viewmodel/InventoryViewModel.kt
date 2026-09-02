@@ -56,7 +56,11 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         val database = InventoryDatabase.getDatabase(application, viewModelScope)
-        repository = InventoryRepository(database.productDao(), database.stockMovementDao())
+        repository = InventoryRepository(
+            database.productDao(),
+            database.stockMovementDao(),
+            database.inventoryItemDao()
+        )
     }
 
     val allProducts: StateFlow<List<Product>> = repository.allProducts

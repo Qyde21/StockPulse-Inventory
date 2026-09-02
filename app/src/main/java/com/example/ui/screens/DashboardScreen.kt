@@ -58,6 +58,8 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.AlertSeverity
 import com.example.data.model.Product
 import com.example.data.model.StockAlert
+import com.example.data.model.StockStatus
+import com.example.ui.components.LowStockIndicatorBadge
 import com.example.ui.components.StockBadge
 import com.example.ui.theme.AccentTeal
 import com.example.ui.theme.AlertInStock
@@ -74,6 +76,7 @@ import com.example.ui.viewmodel.InventoryStats
 fun DashboardScreen(
     stats: InventoryStats,
     stockAlerts: List<StockAlert>,
+    products: List<Product> = emptyList(),
     onOpenScanner: () -> Unit,
     onOpenAddProduct: () -> Unit,
     onOpenPos: () -> Unit,
@@ -400,11 +403,57 @@ fun DashboardScreen(
                 }
             }
         } else {
-            items(stockAlerts, key = { it.product.id }) { alert ->
+            items(stockAlerts, key = { "alert_${it.product.id}" }) { alert ->
                 StockAlertCard(
                     alert = alert,
                     onRestock = { onRestockAlertItem(alert.product, alert.suggestedReorderQty) },
                     onSelect = { onSelectProduct(alert.product) }
+                )
+            }
+        }
+
+        // Main Inventory Stock Items List
+        val displayProducts = if (products.isNotEmpty()) {
+            products
+        } else {
+            stockAlerts.map { it.product }
+        }
+
+        if (displayProducts.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Current Stock Items",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.testTag("dashboard_stock_items_header")
+                        )
+                        Text(
+                            text = "${displayProducts.size} products tracked in live inventory",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Text(
+                        text = "Full Inventory (${displayProducts.size})",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            items(displayProducts, key = { "product_${it.id}" }) { product ->
+                DashboardStockItemCard(
+                    product = product,
+                    onSelect = { onSelectProduct(product) }
                 )
             }
         }
@@ -565,3 +614,105 @@ private fun StockAlertCard(
         }
     }
 }
+
+@Composable
+fun DashboardStockItemCard(
+    product: Product,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isOutOfStock = product.stockStatus == StockStatus.OUT_OF_STOCK
+    val isLowStock = product.stockStatus == StockStatus.LOW_STOCK
+
+    val borderColor = when {
+        isOutOfStock -> AlertOutOfStock.copy(alpha = 0.45f)
+        isLowStock -> AlertLowStock.copy(alpha = 0.45f)
+        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    }
+
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
+            .clickable { onSelect() }
+            .testTag("stock_item_card_${product.sku}")
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Stock Item Name & Category
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = product.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.testTag("stock_item_name_${product.sku}")
+                    )
+                    Text(
+                        text = "${product.category} • SKU: ${product.sku}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Low-stock indicator badge / Status badge
+                LowStockIndicatorBadge(
+                    isLowStock = isLowStock,
+                    isOutOfStock = isOutOfStock,
+                    currentStock = product.currentStock,
+                    unit = product.unit,
+                    modifier = Modifier.testTag("stock_item_badge_${product.sku}")
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Quantity & Pricing details
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "${product.currentStock}",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = when {
+                            isOutOfStock -> AlertOutOfStock
+                            isLowStock -> AlertLowStock
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
+                        modifier = Modifier.testTag("stock_item_qty_${product.sku}")
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${product.unit} on hand (min: ${product.reorderThreshold})",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+
+                Text(
+                    text = "$${String.format("%.2f", product.sellingPrice)}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+

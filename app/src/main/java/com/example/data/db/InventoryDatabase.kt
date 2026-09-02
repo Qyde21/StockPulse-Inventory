@@ -8,14 +8,16 @@ import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.model.MovementType
 import com.example.data.model.Product
+import com.example.data.model.InventoryItem
 import com.example.data.model.StockMovement
+import com.example.data.model.toInventoryItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [Product::class, StockMovement::class],
-    version = 1,
+    entities = [Product::class, StockMovement::class, InventoryItem::class],
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -23,6 +25,7 @@ abstract class InventoryDatabase : RoomDatabase() {
 
     abstract fun productDao(): ProductDao
     abstract fun stockMovementDao(): StockMovementDao
+    abstract fun inventoryItemDao(): InventoryItemDao
 
     companion object {
         @Volatile
@@ -204,14 +207,23 @@ abstract class InventoryDatabase : RoomDatabase() {
             super.onCreate(db)
             INSTANCE?.let { database ->
                 scope.launch(Dispatchers.IO) {
-                    populateInitialData(database.productDao(), database.stockMovementDao())
+                    populateInitialData(
+                        database.productDao(),
+                        database.stockMovementDao(),
+                        database.inventoryItemDao()
+                    )
                 }
             }
         }
 
-        suspend fun populateInitialData(productDao: ProductDao, movementDao: StockMovementDao) {
+        suspend fun populateInitialData(
+            productDao: ProductDao,
+            movementDao: StockMovementDao,
+            inventoryItemDao: InventoryItemDao
+        ) {
             INITIAL_PRODUCTS.forEach { product ->
                 val insertedId = productDao.insertProduct(product)
+                inventoryItemDao.insertItem(product.toInventoryItem().copy(id = insertedId))
                 // Add initial stock movement log
                 movementDao.insertMovement(
                     StockMovement(

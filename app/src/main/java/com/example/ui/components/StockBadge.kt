@@ -126,6 +126,130 @@ fun StockBadge(
     }
 }
 
+/**
+ * Dedicated Low-Stock Indicator Badge.
+ * Highlights low stock and out-of-stock items with clear color coding,
+ * icon indicator, animated pulse for critical alerts, and quantity readout.
+ */
+@Composable
+fun LowStockIndicatorBadge(
+    isLowStock: Boolean,
+    isOutOfStock: Boolean = false,
+    currentStock: Int? = null,
+    unit: String = "pcs",
+    modifier: Modifier = Modifier
+) {
+    if (isOutOfStock) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(AlertOutOfStockBg)
+                .border(1.dp, AlertOutOfStock.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            val infiniteTransition = rememberInfiniteTransition(label = "out_of_stock_pulse")
+            val pulseAlpha by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 0.35f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 750),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "pulseAlpha"
+            )
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .alpha(pulseAlpha)
+                    .clip(CircleShape)
+                    .background(AlertOutOfStock)
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = "Out of Stock",
+                tint = AlertOutOfStock,
+                modifier = Modifier.size(12.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "OUT OF STOCK",
+                color = AlertOutOfStock,
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.4.sp
+            )
+        }
+    } else if (isLowStock) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(AlertLowStockBg)
+                .border(1.dp, AlertLowStock.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            val infiniteTransition = rememberInfiniteTransition(label = "low_stock_pulse")
+            val pulseAlpha by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 0.45f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 850),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "pulseAlpha"
+            )
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .alpha(pulseAlpha)
+                    .clip(CircleShape)
+                    .background(AlertLowStock)
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = "Low Stock",
+                tint = AlertLowStock,
+                modifier = Modifier.size(12.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = if (currentStock != null) "LOW STOCK ($currentStock $unit)" else "LOW STOCK",
+                color = AlertLowStock,
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.4.sp
+            )
+        }
+    } else {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(AlertInStockBg)
+                .border(1.dp, AlertInStock.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "In Stock",
+                tint = AlertInStock,
+                modifier = Modifier.size(12.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = if (currentStock != null) "IN STOCK ($currentStock $unit)" else "IN STOCK",
+                color = AlertInStock,
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.4.sp
+            )
+        }
+    }
+}
+
 @Composable
 fun StockStatusBar(
     currentStock: Int,
