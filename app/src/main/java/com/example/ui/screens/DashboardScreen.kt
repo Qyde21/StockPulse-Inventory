@@ -26,14 +26,17 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -88,6 +91,9 @@ fun DashboardScreen(
     products: List<Product> = emptyList(),
     initialSearchQuery: String = "",
     onSearchQueryChange: ((String) -> Unit)? = null,
+    isDarkTheme: Boolean = false,
+    onToggleQuickTheme: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
     onOpenScanner: () -> Unit,
     onOpenAddProduct: () -> Unit,
     onOpenPos: () -> Unit,
@@ -133,7 +139,7 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "StockPulse Retail",
                         style = MaterialTheme.typography.headlineMedium,
@@ -147,15 +153,45 @@ fun DashboardScreen(
                     )
                 }
 
-                IconButton(
-                    onClick = onResetDemoData,
-                    modifier = Modifier.testTag("btn_reset_demo")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = "Reload Sample Data",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Quick Light / Dark Theme Toggle
+                    IconButton(
+                        onClick = { onToggleQuickTheme?.invoke() },
+                        modifier = Modifier.testTag("btn_quick_theme_toggle")
+                    ) {
+                        Icon(
+                            imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = if (isDarkTheme) "Switch to Light Mode" else "Switch to Dark Mode",
+                            tint = if (isDarkTheme) Color(0xFFFBBF24) else MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // Application Settings Dialog button
+                    IconButton(
+                        onClick = { onOpenSettings?.invoke() },
+                        modifier = Modifier.testTag("btn_settings")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Application Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Reset demo data button
+                    IconButton(
+                        onClick = onResetDemoData,
+                        modifier = Modifier.testTag("btn_reset_demo")
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Reload Sample Data",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

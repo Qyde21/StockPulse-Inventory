@@ -9,6 +9,8 @@ import com.example.data.model.Product
 import com.example.data.model.StockAlert
 import com.example.data.model.StockMovement
 import com.example.data.model.StockStatus
+import com.example.data.preferences.AppThemeMode
+import com.example.data.preferences.ThemePreferences
 import com.example.data.repository.InventoryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -53,6 +55,17 @@ data class CartItem(
 class InventoryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: InventoryRepository
+    private val themePreferences = ThemePreferences.getInstance(application)
+
+    val themeMode: StateFlow<AppThemeMode> = themePreferences.themeMode
+
+    fun setThemeMode(mode: AppThemeMode) {
+        themePreferences.setThemeMode(mode)
+    }
+
+    fun toggleDarkMode(currentIsDark: Boolean) {
+        themePreferences.toggleDarkMode(currentIsDark)
+    }
 
     init {
         val database = InventoryDatabase.getDatabase(application, viewModelScope)

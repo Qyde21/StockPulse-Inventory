@@ -113,11 +113,12 @@ class InventoryRepository(
         quantityDelta: Int,
         type: MovementType,
         reason: String,
-        unitPrice: Double = 0.0
+        unitPrice: Double = 0.0,
+        timestamp: Long = System.currentTimeMillis()
     ): Boolean {
         val product = productDao.getProductByIdSync(productId) ?: return false
         val newStock = (product.currentStock + quantityDelta).coerceAtLeast(0)
-        productDao.updateStock(productId, newStock, System.currentTimeMillis())
+        productDao.updateStock(productId, newStock, timestamp)
 
         movementDao.insertMovement(
             StockMovement(
@@ -130,7 +131,7 @@ class InventoryRepository(
                 newStock = newStock,
                 reason = reason.ifBlank { type.displayName },
                 unitPrice = if (unitPrice > 0.0) unitPrice else product.sellingPrice,
-                timestamp = System.currentTimeMillis()
+                timestamp = timestamp
             )
         )
         return true

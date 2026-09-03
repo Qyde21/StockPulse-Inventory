@@ -311,5 +311,98 @@ class ExampleRobolectricTest {
       inMemoryDb.close()
     }
   }
+
+  @Test
+  fun `theme preferences stores and toggles light and dark mode`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val themePrefs = com.example.data.preferences.ThemePreferences(context)
+
+    // Set light mode
+    themePrefs.setThemeMode(com.example.data.preferences.AppThemeMode.LIGHT)
+    assertEquals(com.example.data.preferences.AppThemeMode.LIGHT, themePrefs.themeMode.value)
+
+    // Set dark mode
+    themePrefs.setThemeMode(com.example.data.preferences.AppThemeMode.DARK)
+    assertEquals(com.example.data.preferences.AppThemeMode.DARK, themePrefs.themeMode.value)
+
+    // Toggle from dark (true) to light
+    themePrefs.toggleDarkMode(true)
+    assertEquals(com.example.data.preferences.AppThemeMode.LIGHT, themePrefs.themeMode.value)
+
+    // Toggle from light (false) to dark
+    themePrefs.toggleDarkMode(false)
+    assertEquals(com.example.data.preferences.AppThemeMode.DARK, themePrefs.themeMode.value)
+
+    // Reset back to system default
+    themePrefs.setThemeMode(com.example.data.preferences.AppThemeMode.SYSTEM)
+    assertEquals(com.example.data.preferences.AppThemeMode.SYSTEM, themePrefs.themeMode.value)
+  }
+
+  @Test
+  fun `settings dialog renders theme toggle switch and options`() {
+    var selectedMode = com.example.data.preferences.AppThemeMode.SYSTEM
+    var isDark = false
+
+    composeTestRule.setContent {
+      com.example.ui.theme.MyApplicationTheme(darkTheme = isDark) {
+        com.example.ui.components.SettingsDialog(
+          currentThemeMode = selectedMode,
+          isDarkTheme = isDark,
+          onSelectThemeMode = { selectedMode = it },
+          onToggleDarkMode = { isDark = it },
+          onResetDemoData = {},
+          onDismiss = {}
+        )
+      }
+    }
+
+    // Verify dark mode switch and theme mode selection options exist
+    composeTestRule.onNodeWithTag("theme_dark_mode_switch").assertExists().performScrollTo().performClick()
+    assertEquals(true, isDark)
+
+    composeTestRule.onNodeWithTag("theme_mode_system").assertExists()
+    composeTestRule.onNodeWithTag("theme_mode_light").assertExists()
+    composeTestRule.onNodeWithTag("theme_mode_dark").assertExists()
+
+    // Test clicking dark mode option
+    composeTestRule.onNodeWithTag("theme_mode_dark").performScrollTo().performClick()
+    assertEquals(com.example.data.preferences.AppThemeMode.DARK, selectedMode)
+
+    // Test clicking light mode option
+    composeTestRule.onNodeWithTag("theme_mode_light").performScrollTo().performClick()
+    assertEquals(com.example.data.preferences.AppThemeMode.LIGHT, selectedMode)
+  }
+
+  @Test
+  fun `dashboard header contains quick theme toggle and settings button`() {
+    var quickThemeToggled = false
+    var settingsOpened = false
+
+    composeTestRule.setContent {
+      com.example.ui.theme.MyApplicationTheme {
+        com.example.ui.screens.DashboardScreen(
+          stats = com.example.ui.viewmodel.InventoryStats(),
+          stockAlerts = emptyList(),
+          products = emptyList(),
+          isDarkTheme = false,
+          onToggleQuickTheme = { quickThemeToggled = true },
+          onOpenSettings = { settingsOpened = true },
+          onOpenScanner = {},
+          onOpenAddProduct = {},
+          onOpenPos = {},
+          onViewCatalog = {},
+          onRestockAlertItem = { _, _ -> },
+          onSelectProduct = {},
+          onResetDemoData = {}
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag("btn_quick_theme_toggle").assertExists().performClick()
+    assertEquals(true, quickThemeToggled)
+
+    composeTestRule.onNodeWithTag("btn_settings").assertExists().performClick()
+    assertEquals(true, settingsOpened)
+  }
 }
 

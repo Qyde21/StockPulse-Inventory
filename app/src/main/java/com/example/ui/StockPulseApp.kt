@@ -46,10 +46,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.model.Product
+import com.example.data.preferences.AppThemeMode
 import com.example.ui.components.AddEditProductSheet
 import com.example.ui.components.ProductDetailModal
 import com.example.ui.components.QuickAdjustStockDialog
 import com.example.ui.components.RestockDialog
+import com.example.ui.components.SettingsDialog
 import com.example.ui.scanner.BarcodeScannerScreen
 import com.example.ui.scanner.ScannedProductActionDialog
 import com.example.ui.screens.AuditLogScreen
@@ -75,7 +77,8 @@ enum class AppDestination(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StockPulseApp(
-    viewModel: InventoryViewModel = viewModel()
+    viewModel: InventoryViewModel = viewModel(),
+    isDarkTheme: Boolean = false
 ) {
     val allProducts by viewModel.allProducts.collectAsStateWithLifecycle()
     val filteredProducts by viewModel.filteredProducts.collectAsStateWithLifecycle()
@@ -84,6 +87,7 @@ fun StockPulseApp(
     val stats by viewModel.stats.collectAsStateWithLifecycle()
     val cart by viewModel.cart.collectAsStateWithLifecycle()
     val cartDiscount by viewModel.cartDiscountPercent.collectAsStateWithLifecycle()
+    val currentThemeMode by viewModel.themeMode.collectAsStateWithLifecycle()
 
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
@@ -106,6 +110,7 @@ fun StockPulseApp(
     }
 
     var currentDestination by remember { mutableStateOf(AppDestination.DASHBOARD) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
     // Dialog & Sheet State
     var selectedProductForDetail by remember { mutableStateOf<Product?>(null) }
@@ -188,6 +193,9 @@ fun StockPulseApp(
                         stats = stats,
                         stockAlerts = stockAlerts,
                         products = allProducts,
+                        isDarkTheme = isDarkTheme,
+                        onToggleQuickTheme = { viewModel.toggleDarkMode(isDarkTheme) },
+                        onOpenSettings = { showSettingsDialog = true },
                         onOpenScanner = { viewModel.openScanner() },
                         onOpenAddProduct = {
                             productForAddEdit = null
@@ -389,6 +397,18 @@ fun StockPulseApp(
                 viewModel.restockProduct(productForRestockDialog!!.id, qty, note)
                 productForRestockDialog = null
             }
+        )
+    }
+
+    // Application Settings Dialog
+    if (showSettingsDialog) {
+        SettingsDialog(
+            currentThemeMode = currentThemeMode,
+            isDarkTheme = isDarkTheme,
+            onSelectThemeMode = { mode -> viewModel.setThemeMode(mode) },
+            onToggleDarkMode = { isDark -> viewModel.toggleDarkMode(!isDark) },
+            onResetDemoData = { viewModel.resetDemoData() },
+            onDismiss = { showSettingsDialog = false }
         )
     }
 }
